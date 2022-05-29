@@ -5,6 +5,27 @@ var express = require('express');
 var socket = require('socket.io');
 var app = express();
 
+var client = new net.Socket();
+var backendIp = 'IP_ADDRESS';
+var backendPort = 13000;
+client.connect(backendPort, backendIp, function() {
+	console.log('Connected');
+	client.write(JSON.stringify({
+		eventName: "testando evento",
+		socketId: "testando socketId",
+		name: "luciano"
+	}));
+});
+
+client.on('data', function(data) {
+	console.log('Received: ' + data);
+	client.destroy(); // kill client after server's response
+});
+
+client.on('close', function() {
+	console.log('Connection closed');
+});
+
 var users = {};
 var server = app.listen(process.env.PORT || 13000, function(){
 	console.log("Express server listening on port %d in %s mode", this.address().port, app.settings.env);
