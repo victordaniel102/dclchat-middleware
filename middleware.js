@@ -3,11 +3,13 @@ var net = require('net');
 var cors = require('cors');
 var express = require('express');
 var socket = require('socket.io');
+var clientTcp = new net.Socket();
 var app = express();
 
-var backendIp = '192.168.0.10';
+var backendIp = '192.168.0.11';
 var backendPort = 13000;
 
+var messages = [];
 
 function formatData(data){
 	let result = Buffer.from(data).toString().split('endMessageDCL');
@@ -28,15 +30,16 @@ var io = socket(server, {
     }
 });
 
+clientTcp.connect(backendPort, backendIp, function() {
+	console.log('== Conectado com servidor TCP ==');
+});
+
 io.on('connection', async (socket) => {
-	var clientTcp = new net.Socket();
+	
 	console.log('teste')
 	const ids = await io.allSockets();
 	console.log(ids,'ids')
 
-	clientTcp.connect(backendPort, backendIp, function() {
-		console.log('== Conectado com servidor TCP ==');
-	});
 	
 	clientTcp.on('data', function(data) {
 		data = formatData(data);
@@ -70,7 +73,14 @@ io.on('connection', async (socket) => {
 				break;
 			case 'userMessage':
 				if(broadcast){
-					socket.broadcast.emit('user msg', data.name, { body: data.text, senderId: data.socketId });
+					if (!messages.length) {
+						messages.push({ name: data.name, senderId: data.socketId, text: data.text });
+					} else {
+						if (messages[messages.length - 1].text != data.text) {
+							messages.push({ name: data.name, senderId: data.socketId, text: data.text });
+						}
+					}
+					io.emit('update messages', messages);
 				}
 				break;
 			case 'userStopTyping':
